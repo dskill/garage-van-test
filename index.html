@@ -539,6 +539,7 @@
     }
 
     // Calculate clearance
+    // Only returns a clearance value when part of the roof is actually at/under the header
     function calculateClearance(van) {
       const garageX = state.rampLength;
       const floorDepth = getFloorDepth();
@@ -562,18 +563,12 @@
       ];
 
       for (const point of topPoints) {
-        // Check if point is in the header zone (x within garage entrance)
-        if (point.x >= headerFront - 100 && point.x <= headerBack + 500) {
+        // Only check clearance when the point is actually at or past the garage entrance
+        // The header can only be hit when x >= headerFront
+        if (point.x >= headerFront) {
           const clearance = headerBottom - point.y;
           minClearance = Math.min(minClearance, clearance);
         }
-      }
-
-      // Also check against the garage wall/header front edge
-      // when the front of the van is approaching
-      if (van.corners.frontTop.x > headerFront - 500) {
-        const clearance = headerBottom - van.corners.frontTop.y;
-        minClearance = Math.min(minClearance, clearance);
       }
 
       return minClearance;
