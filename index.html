@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Garage Van Clearance Visualizer</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #1a1a2e;
+      color: #eee;
+      min-height: 100vh;
+    }
+
+    .container {
+      display: flex;
+      height: 100vh;
+    }
+
+    .panel {
+      padding: 20px;
+      overflow-y: auto;
+    }
+
+    .controls {
+      width: 320px;
+      background: #16213e;
+      border-right: 1px solid #0f3460;
+    }
+
+    .visualization {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    h1 {
+      font-size: 1.2rem;
+      margin-bottom: 20px;
+      color: #e94560;
+    }
+
+    h2 {
+      font-size: 0.9rem;
+      margin: 20px 0 10px 0;
+      color: #0f9b8e;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .input-group {
+      margin-bottom: 12px;
+    }
+
+    .input-group label {
+      display: block;
+      font-size: 0.8rem;
+      margin-bottom: 4px;
+      color: #aaa;
+    }
+
+    .input-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .input-row input[type="range"] {
+      flex: 1;
+    }
+
+    .input-row input[type="text"].unit-input {
+      width: 130px;
+      padding: 4px 6px;
+      background: #0f3460;
+      border: 1px solid #1a4b8c;
+      border-radius: 4px;
+      color: #fff;
+      font-size: 0.8rem;
+    }
+
+    input[type="range"] {
+      -webkit-appearance: none;
+      height: 6px;
+      background: #0f3460;
+      border-radius: 3px;
+      cursor: pointer;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 16px;
+      height: 16px;
+      background: #e94560;
+      border-radius: 50%;
+      cursor: pointer;
+    }
+
+    .canvas-container {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 20px;
+    }
+
+    canvas {
+      background: #0d1b2a;
+      border-radius: 8px;
+      max-width: 100%;
+    }
+
+    .status-bar {
+      background: #16213e;
+      padding: 15px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-top: 1px solid #0f3460;
+    }
+
+    .clearance-display {
+      font-size: 1.5rem;
+      font-weight: bold;
+    }
+
+    .clearance-display.safe { color: #4ade80; }
+    .clearance-display.tight { color: #fbbf24; }
+    .clearance-display.collision { color: #ef4444; }
+
+    .position-control {
+      display: flex;
+      gap: 15px;
+      align-items: center;
+      flex: 1;
+      max-width: 500px;
+    }
+
+    .position-control input[type="range"] {
+      flex: 1;
+    }
+
+    .position-label {
+      font-size: 0.85rem;
+      color: #aaa;
+      min-width: 100px;
+    }
+
+    .worst-case-btn {
+      padding: 8px 16px;
+      background: #e94560;
+      border: none;
+      border-radius: 4px;
+      color: white;
+      cursor: pointer;
+      font-size: 0.85rem;
+    }
+
+    .worst-case-btn:hover {
+      background: #d13a54;
+    }
+
+    .info {
+      font-size: 0.75rem;
+      color: #666;
+      margin-top: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="panel controls">
+      <h1>Garage Van Clearance</h1>
+
+      <h2>Van Dimensions</h2>
+
+      <div class="input-group">
+        <label>Overall Height</label>
+        <div class="input-row">
+          <input type="range" id="vanHeight" min="1500" max="2500" step="10">
+          <input type="text" id="vanHeightNum" class="unit-input">
+        </div>
+        <div class="info">From ground to top of pop-top (closed)</div>
+      </div>
+
+      <div class="input-group">
+        <label>Wheelbase</label>
+        <div class="input-row">
+          <input type="range" id="wheelbase" min="2000" max="4000" step="10">
+          <input type="text" id="wheelbaseNum" class="unit-input">
+        </div>
+      </div>
+
+      <div class="input-group">
+        <label>Ground Clearance</label>
+        <div class="input-row">
+          <input type="range" id="groundClearance" min="100" max="300" step="5">
+          <input type="text" id="groundClearanceNum" class="unit-input">
+        </div>
+      </div>
+
+      <div class="input-group">
+        <label>Front Overhang</label>
+        <div class="input-row">
+          <input type="range" id="frontOverhang" min="500" max="1500" step="10">
+          <input type="text" id="frontOverhangNum" class="unit-input">
+        </div>
+      </div>
+
+      <div class="input-group">
+        <label>Rear Overhang</label>
+        <div class="input-row">
+          <input type="range" id="rearOverhang" min="500" max="1500" step="10">
+          <input type="text" id="rearOverhangNum" class="unit-input">
+        </div>
+      </div>
+
+      <div class="input-group">
+        <label>Wheel Diameter</label>
+        <div class="input-row">
+          <input type="range" id="wheelDiameter" min="500" max="800" step="10">
+          <input type="text" id="wheelDiameterNum" class="unit-input">
+        </div>
+      </div>
+
+      <h2>Garage</h2>
+
+      <div class="input-group">
+        <label>Entrance Height</label>
+        <div class="input-row">
+          <input type="range" id="garageHeight" min="1800" max="3000" step="10">
+          <input type="text" id="garageHeightNum" class="unit-input">
+        </div>
+        <div class="info">From garage floor to bottom of header</div>
+      </div>
+
+      <div class="input-group">
+        <label>Header Depth</label>
+        <div class="input-row">
+          <input type="range" id="headerDepth" min="50" max="500" step="10">
+          <input type="text" id="headerDepthNum" class="unit-input">
+        </div>
+        <div class="info">How far the header extends into garage</div>
+      </div>
+
+      <h2>Driveway</h2>
+
+      <div class="input-group">
+        <label>Ramp Angle (degrees)</label>
+        <div class="input-row">
+          <input type="range" id="rampAngle" min="0" max="30" step="0.5">
+          <input type="text" id="rampAngleNum" class="unit-input" style="width: 80px;">
+        </div>
+        <div class="info">Measured slope angle going down</div>
+      </div>
+
+      <div class="input-group">
+        <label>Ramp Length</label>
+        <div class="input-row">
+          <input type="range" id="rampLength" min="1000" max="6000" step="100">
+          <input type="text" id="rampLengthNum" class="unit-input">
+        </div>
+        <div class="info">Horizontal distance from street to garage</div>
+      </div>
+
+      <div class="input-group">
+        <label>Calculated Floor Depth</label>
+        <div id="calculatedDepth" style="color: #0f9b8e; font-size: 0.9rem;">--</div>
+        <div class="info">How far garage floor is below street</div>
+      </div>
+    </div>
+
+    <div class="panel visualization">
+      <div class="canvas-container">
+        <canvas id="canvas" width="900" height="500"></canvas>
+      </div>
+
+      <div class="status-bar">
+        <div class="position-control">
+          <span class="position-label">Van Position:</span>
+          <input type="range" id="vanPosition" min="0" max="100" value="0">
+          <span id="positionPercent">0%</span>
+        </div>
+
+        <div class="clearance-display safe" id="clearanceDisplay">
+          Clearance: -- mm
+        </div>
+
+        <button class="worst-case-btn" id="worstCaseBtn">Find Worst Position</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // State
+    const state = {
+      // Van (NV200 defaults)
+      vanHeight: 1860,
+      wheelbase: 2725,
+      groundClearance: 160,
+      frontOverhang: 850,
+      rearOverhang: 825,
+      wheelDiameter: 630,
+
+      // Garage
+      garageHeight: 2108,  // 83.0"
+      headerDepth: 200,
+
+      // Driveway
+      rampAngle: 10.4,     // degrees - measured directly
+      rampLength: 3302,    // 130.0"
+
+      // Animation
+      vanPosition: 0, // 0-100
+    };
+
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+
+    const CANVAS_PADDING = 50;
+
+    // Calculate scene bounds for proper centering
+    function getSceneBounds() {
+      const floorDepth = getFloorDepth();
+      const minY = -floorDepth - 200;  // Below garage floor
+      const maxY = Math.max(state.vanHeight + 200, -floorDepth + state.garageHeight + 400);
+      const minX = -2500;
+      const maxX = state.rampLength + 3500;
+      return { minX, maxX, minY, maxY };
+    }
+
+    // Convert world coords (mm) to canvas coords
+    function toCanvas(x, y) {
+      const bounds = getSceneBounds();
+      const sceneHeight = bounds.maxY - bounds.minY;
+      const sceneWidth = bounds.maxX - bounds.minX;
+
+      // Calculate scale to fit scene in canvas
+      const scaleX = (canvas.width - 2 * CANVAS_PADDING) / sceneWidth;
+      const scaleY = (canvas.height - 2 * CANVAS_PADDING) / sceneHeight;
+      const scale = Math.min(scaleX, scaleY);
+
+      // Center the scene
+      const offsetX = CANVAS_PADDING + (canvas.width - 2 * CANVAS_PADDING - sceneWidth * scale) / 2;
+      const offsetY = CANVAS_PADDING + (canvas.height - 2 * CANVAS_PADDING - sceneHeight * scale) / 2;
+
+      return {
+        x: offsetX + (x - bounds.minX) * scale,
+        y: canvas.height - offsetY - (y - bounds.minY) * scale
+      };
+    }
+
+    // Get current scale for drawing elements
+    function getCurrentScale() {
+      const bounds = getSceneBounds();
+      const sceneHeight = bounds.maxY - bounds.minY;
+      const sceneWidth = bounds.maxX - bounds.minX;
+      const scaleX = (canvas.width - 2 * CANVAS_PADDING) / sceneWidth;
+      const scaleY = (canvas.height - 2 * CANVAS_PADDING) / sceneHeight;
+      return Math.min(scaleX, scaleY);
+    }
+
+    // Convert mm to inches string
+    function mmToDisplay(mm) {
+      const inches = mm / 25.4;
+      return `${Math.round(mm)} mm (${inches.toFixed(1)}")`;
+    }
+
+    // Parse input value - supports inches with " suffix
+    function parseValue(val) {
+      const str = val.toString().trim();
+      if (str.includes('"') || str.toLowerCase().includes('in')) {
+        // Parse as inches, convert to mm
+        const num = parseFloat(str.replace(/[^0-9.-]/g, ''));
+        return Math.round(num * 25.4);
+      }
+      return parseFloat(str) || 0;
+    }
+
+    // Bind inputs to state
+    function bindInput(id, stateKey) {
+      const slider = document.getElementById(id);
+      const textInput = document.getElementById(id + 'Num');
+
+      slider.value = state[stateKey];
+      textInput.value = mmToDisplay(state[stateKey]);
+
+      slider.addEventListener('input', () => {
+        state[stateKey] = parseFloat(slider.value);
+        textInput.value = mmToDisplay(state[stateKey]);
+        updateCalculatedDepth();
+        render();
+      });
+
+      textInput.addEventListener('change', () => {
+        state[stateKey] = parseValue(textInput.value);
+        slider.value = state[stateKey];
+        textInput.value = mmToDisplay(state[stateKey]);
+        updateCalculatedDepth();
+        render();
+      });
+    }
+
+    // Calculate floor depth from angle and ramp length
+    function getFloorDepth() {
+      return state.rampLength * Math.tan(state.rampAngle * Math.PI / 180);
+    }
+
+    // Update calculated floor depth display
+    function updateCalculatedDepth() {
+      const depthEl = document.getElementById('calculatedDepth');
+      const depth = getFloorDepth();
+      const depthInches = depth / 25.4;
+      depthEl.textContent = `${Math.round(depth)} mm (${depthInches.toFixed(1)}")`;
+    }
+
+    // Initialize all inputs
+    bindInput('vanHeight', 'vanHeight');
+    bindInput('wheelbase', 'wheelbase');
+    bindInput('groundClearance', 'groundClearance');
+    bindInput('frontOverhang', 'frontOverhang');
+    bindInput('rearOverhang', 'rearOverhang');
+    bindInput('wheelDiameter', 'wheelDiameter');
+    bindInput('garageHeight', 'garageHeight');
+    bindInput('headerDepth', 'headerDepth');
+    bindInput('rampLength', 'rampLength');
+
+    // Special binding for ramp angle (degrees, not mm)
+    const angleSlider = document.getElementById('rampAngle');
+    const angleInput = document.getElementById('rampAngleNum');
+    angleSlider.value = state.rampAngle;
+    angleInput.value = state.rampAngle + '°';
+    angleSlider.addEventListener('input', () => {
+      state.rampAngle = parseFloat(angleSlider.value);
+      angleInput.value = state.rampAngle + '°';
+      updateCalculatedDepth();
+      render();
+    });
+    angleInput.addEventListener('change', () => {
+      state.rampAngle = parseFloat(angleInput.value.replace(/[^0-9.-]/g, '')) || 0;
+      angleSlider.value = state.rampAngle;
+      angleInput.value = state.rampAngle + '°';
+      updateCalculatedDepth();
+      render();
+    });
+
+    updateCalculatedDepth();
+
+    // Position slider
+    const positionSlider = document.getElementById('vanPosition');
+    const positionPercent = document.getElementById('positionPercent');
+    positionSlider.addEventListener('input', () => {
+      state.vanPosition = parseFloat(positionSlider.value);
+      positionPercent.textContent = Math.round(state.vanPosition) + '%';
+      render();
+    });
+
+    // Worst case button
+    document.getElementById('worstCaseBtn').addEventListener('click', findWorstPosition);
+
+    // Get ground height at a given x position
+    // Ramp goes DOWN from street level (y=0) to garage floor (y=-floorDepth)
+    function getGroundHeight(x) {
+      const rampEnd = state.rampLength;
+      const floorDepth = getFloorDepth();
+
+      if (x < 0) {
+        // Street level
+        return 0;
+      } else if (x < rampEnd) {
+        // On the ramp - linear interpolation from 0 to -floorDepth
+        return -floorDepth * (x / rampEnd);
+      } else {
+        // In the garage (flat at floor depth below street)
+        return -floorDepth;
+      }
+    }
+
+    // Calculate van geometry at current position
+    function getVanGeometry() {
+      const vanLength = state.wheelbase + state.frontOverhang + state.rearOverhang;
+      const wheelRadius = state.wheelDiameter / 2;
+      const bodyBottom = state.groundClearance;
+      const bodyHeight = state.vanHeight - state.groundClearance;
+
+      // Position: 0% = rear axle at x=-2000, 100% = front fully in garage
+      const totalTravel = 4000 + state.rampLength + vanLength;
+      const rearAxleX = -2000 + (state.vanPosition / 100) * totalTravel;
+      const frontAxleX = rearAxleX + state.wheelbase;
+
+      // Get ground height at each axle
+      const rearGroundY = getGroundHeight(rearAxleX);
+      const frontGroundY = getGroundHeight(frontAxleX);
+
+      // Van angle based on axle heights
+      const vanAngle = Math.atan2(frontGroundY - rearGroundY, state.wheelbase);
+
+      // Wheel centers
+      const rearWheelCenter = { x: rearAxleX, y: rearGroundY + wheelRadius };
+      const frontWheelCenter = { x: frontAxleX, y: frontGroundY + wheelRadius };
+
+      // Body corners (in local coords, then rotated)
+      const rearBottomLocal = { x: -state.rearOverhang, y: bodyBottom };
+      const frontBottomLocal = { x: state.wheelbase + state.frontOverhang, y: bodyBottom };
+      const rearTopLocal = { x: -state.rearOverhang, y: bodyBottom + bodyHeight };
+      const frontTopLocal = { x: state.wheelbase + state.frontOverhang, y: bodyBottom + bodyHeight };
+
+      // Rotate and translate corners
+      // Local coords: Y=0 is ground level, Y=vanHeight is top of van
+      function transformPoint(local) {
+        const cos = Math.cos(vanAngle);
+        const sin = Math.sin(vanAngle);
+        return {
+          x: rearAxleX + local.x * cos - local.y * sin,
+          y: rearGroundY + local.x * sin + local.y * cos
+        };
+      }
+
+      return {
+        rearWheelCenter,
+        frontWheelCenter,
+        wheelRadius,
+        vanAngle,
+        corners: {
+          rearBottom: transformPoint(rearBottomLocal),
+          frontBottom: transformPoint(frontBottomLocal),
+          rearTop: transformPoint(rearTopLocal),
+          frontTop: transformPoint(frontTopLocal)
+        },
+        rearAxleX,
+        frontAxleX
+      };
+    }
+
+    // Calculate clearance
+    function calculateClearance(van) {
+      const garageX = state.rampLength;
+      const floorDepth = getFloorDepth();
+      // Header bottom is at garage floor + entrance height
+      // Garage floor is at -floorDepth, so header bottom is at -floorDepth + garageHeight
+      const headerBottom = -floorDepth + state.garageHeight;
+      const headerFront = garageX;
+      const headerBack = garageX + state.headerDepth;
+
+      let minClearance = Infinity;
+
+      // Check top corners and intermediate points
+      const topPoints = [
+        van.corners.rearTop,
+        van.corners.frontTop,
+        // Midpoint of roof
+        {
+          x: (van.corners.rearTop.x + van.corners.frontTop.x) / 2,
+          y: (van.corners.rearTop.y + van.corners.frontTop.y) / 2
+        }
+      ];
+
+      for (const point of topPoints) {
+        // Check if point is in the header zone (x within garage entrance)
+        if (point.x >= headerFront - 100 && point.x <= headerBack + 500) {
+          const clearance = headerBottom - point.y;
+          minClearance = Math.min(minClearance, clearance);
+        }
+      }
+
+      // Also check against the garage wall/header front edge
+      // when the front of the van is approaching
+      if (van.corners.frontTop.x > headerFront - 500) {
+        const clearance = headerBottom - van.corners.frontTop.y;
+        minClearance = Math.min(minClearance, clearance);
+      }
+
+      return minClearance;
+    }
+
+    // Find worst position
+    function findWorstPosition() {
+      let worstPosition = 0;
+      let minClearance = Infinity;
+
+      for (let pos = 0; pos <= 100; pos += 0.5) {
+        state.vanPosition = pos;
+        const van = getVanGeometry();
+        const clearance = calculateClearance(van);
+
+        if (clearance < minClearance) {
+          minClearance = clearance;
+          worstPosition = pos;
+        }
+      }
+
+      state.vanPosition = worstPosition;
+      positionSlider.value = worstPosition;
+      positionPercent.textContent = Math.round(worstPosition) + '%';
+      render();
+    }
+
+    // Render everything
+    function render() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      const van = getVanGeometry();
+      const clearance = calculateClearance(van);
+
+      // Update clearance display
+      const display = document.getElementById('clearanceDisplay');
+      if (clearance === Infinity) {
+        display.textContent = 'Clearance: N/A';
+        display.className = 'clearance-display safe';
+      } else {
+        const inches = clearance / 25.4;
+        display.textContent = `Clearance: ${Math.round(clearance)} mm (${inches.toFixed(1)}")`;
+        if (clearance < 0) {
+          display.className = 'clearance-display collision';
+        } else if (clearance < 50) {
+          display.className = 'clearance-display tight';
+        } else {
+          display.className = 'clearance-display safe';
+        }
+      }
+
+      drawGround();
+      drawGarage();
+      drawVan(van);
+      drawMeasurements(van, clearance);
+    }
+
+    function drawGround() {
+      const floorY = -getFloorDepth();  // negative = below street level
+
+      ctx.strokeStyle = '#4a5568';
+      ctx.lineWidth = 2;
+      ctx.fillStyle = '#2d3748';
+
+      // Fill ground area
+      ctx.beginPath();
+      let p = toCanvas(-2000, 0);
+      ctx.moveTo(p.x, p.y);
+
+      // Street level
+      p = toCanvas(0, 0);
+      ctx.lineTo(p.x, p.y);
+
+      // Ramp goes down to garage floor
+      p = toCanvas(state.rampLength, floorY);
+      ctx.lineTo(p.x, p.y);
+
+      // Garage floor extends
+      p = toCanvas(state.rampLength + 3000, floorY);
+      ctx.lineTo(p.x, p.y);
+
+      // Close the fill area (go down, across, and back up)
+      p = toCanvas(state.rampLength + 3000, floorY - 500);
+      ctx.lineTo(p.x, p.y);
+      p = toCanvas(-2000, -500);
+      ctx.lineTo(p.x, p.y);
+      ctx.closePath();
+      ctx.fill();
+
+      // Draw surface line
+      ctx.strokeStyle = '#718096';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      p = toCanvas(-2000, 0);
+      ctx.moveTo(p.x, p.y);
+      p = toCanvas(0, 0);
+      ctx.lineTo(p.x, p.y);
+      p = toCanvas(state.rampLength, floorY);
+      ctx.lineTo(p.x, p.y);
+      p = toCanvas(state.rampLength + 3000, floorY);
+      ctx.lineTo(p.x, p.y);
+      ctx.stroke();
+    }
+
+    function drawGarage() {
+      const garageX = state.rampLength;
+      const floorY = -getFloorDepth();  // negative = below street level
+      const headerBottom = floorY + state.garageHeight;
+      const headerTop = headerBottom + 300; // Visual header thickness
+
+      // Garage walls
+      ctx.fillStyle = '#4a5568';
+
+      // Header
+      let p1 = toCanvas(garageX, headerBottom);
+      let p2 = toCanvas(garageX + state.headerDepth, headerBottom);
+      let p3 = toCanvas(garageX + state.headerDepth, headerTop);
+      let p4 = toCanvas(garageX, headerTop);
+
+      ctx.beginPath();
+      ctx.moveTo(p1.x, p1.y);
+      ctx.lineTo(p2.x, p2.y);
+      ctx.lineTo(p3.x, p3.y);
+      ctx.lineTo(p4.x, p4.y);
+      ctx.closePath();
+      ctx.fill();
+
+      // Back wall (visual only)
+      ctx.fillStyle = '#374151';
+      p1 = toCanvas(garageX + 2500, floorY);
+      p2 = toCanvas(garageX + 2500, headerTop);
+      p3 = toCanvas(garageX + 3000, headerTop);
+      p4 = toCanvas(garageX + 3000, floorY);
+
+      ctx.beginPath();
+      ctx.moveTo(p1.x, p1.y);
+      ctx.lineTo(p2.x, p2.y);
+      ctx.lineTo(p3.x, p3.y);
+      ctx.lineTo(p4.x, p4.y);
+      ctx.closePath();
+      ctx.fill();
+
+      // Ceiling
+      ctx.fillStyle = '#4a5568';
+      p1 = toCanvas(garageX + state.headerDepth, headerBottom);
+      p2 = toCanvas(garageX + 2500, headerBottom);
+      p3 = toCanvas(garageX + 2500, headerTop);
+      p4 = toCanvas(garageX + state.headerDepth, headerTop);
+
+      ctx.beginPath();
+      ctx.moveTo(p1.x, p1.y);
+      ctx.lineTo(p2.x, p2.y);
+      ctx.lineTo(p3.x, p3.y);
+      ctx.lineTo(p4.x, p4.y);
+      ctx.closePath();
+      ctx.fill();
+
+      // Garage opening outline
+      ctx.strokeStyle = '#e94560';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      p1 = toCanvas(garageX, floorY);
+      ctx.moveTo(p1.x, p1.y);
+      p2 = toCanvas(garageX, headerBottom);
+      ctx.lineTo(p2.x, p2.y);
+      p3 = toCanvas(garageX + state.headerDepth, headerBottom);
+      ctx.lineTo(p3.x, p3.y);
+      ctx.stroke();
+    }
+
+    function drawVan(van) {
+      // Van body
+      const clearance = calculateClearance(van);
+      ctx.fillStyle = clearance < 0 ? '#ef4444' : (clearance < 50 ? '#fbbf24' : '#3b82f6');
+      ctx.strokeStyle = '#1e40af';
+      ctx.lineWidth = 2;
+
+      ctx.beginPath();
+      let p = toCanvas(van.corners.rearBottom.x, van.corners.rearBottom.y);
+      ctx.moveTo(p.x, p.y);
+      p = toCanvas(van.corners.frontBottom.x, van.corners.frontBottom.y);
+      ctx.lineTo(p.x, p.y);
+      p = toCanvas(van.corners.frontTop.x, van.corners.frontTop.y);
+      ctx.lineTo(p.x, p.y);
+      p = toCanvas(van.corners.rearTop.x, van.corners.rearTop.y);
+      ctx.lineTo(p.x, p.y);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Wheels
+      const scale = getCurrentScale();
+      ctx.fillStyle = '#1f2937';
+      ctx.strokeStyle = '#4b5563';
+      ctx.lineWidth = 3;
+
+      // Rear wheel
+      p = toCanvas(van.rearWheelCenter.x, van.rearWheelCenter.y);
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, van.wheelRadius * scale, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      // Front wheel
+      p = toCanvas(van.frontWheelCenter.x, van.frontWheelCenter.y);
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, van.wheelRadius * scale, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      // Wheel hubs
+      ctx.fillStyle = '#6b7280';
+      p = toCanvas(van.rearWheelCenter.x, van.rearWheelCenter.y);
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, van.wheelRadius * scale * 0.3, 0, Math.PI * 2);
+      ctx.fill();
+
+      p = toCanvas(van.frontWheelCenter.x, van.frontWheelCenter.y);
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, van.wheelRadius * scale * 0.3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    function drawMeasurements(van, clearance) {
+      const floorY = -getFloorDepth();
+      ctx.font = '12px sans-serif';
+      ctx.fillStyle = '#9ca3af';
+
+      // Garage entrance height label
+      const garageX = state.rampLength;
+      let p1 = toCanvas(garageX - 100, floorY);
+      let p2 = toCanvas(garageX - 100, floorY + state.garageHeight);
+
+      ctx.strokeStyle = '#9ca3af';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([5, 5]);
+      ctx.beginPath();
+      ctx.moveTo(p1.x, p1.y);
+      ctx.lineTo(p2.x, p2.y);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      const garageInches = (state.garageHeight / 25.4).toFixed(1);
+      ctx.fillText(`${state.garageHeight}mm / ${garageInches}"`, p1.x - 70, (p1.y + p2.y) / 2);
+
+      // Ramp angle label
+      if (state.rampAngle > 0) {
+        const midX = state.rampLength / 2;
+        const midY = getGroundHeight(midX);
+        const p = toCanvas(midX, midY + 300);
+        ctx.fillText(`${state.rampAngle}°`, p.x, p.y);
+      }
+
+      // Van height at highest point
+      const highestPoint = van.corners.frontTop.y > van.corners.rearTop.y
+        ? van.corners.frontTop
+        : van.corners.rearTop;
+
+      if (clearance !== Infinity && clearance < 200) {
+        // Draw clearance line
+        const headerBottom = floorY + state.garageHeight;
+        const hp = toCanvas(highestPoint.x, highestPoint.y);
+        const hb = toCanvas(highestPoint.x, headerBottom);
+
+        ctx.strokeStyle = clearance < 0 ? '#ef4444' : (clearance < 50 ? '#fbbf24' : '#4ade80');
+        ctx.lineWidth = 2;
+        ctx.setLineDash([3, 3]);
+        ctx.beginPath();
+        ctx.moveTo(hp.x, hp.y);
+        ctx.lineTo(hb.x, hb.y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Clearance label
+        ctx.fillStyle = clearance < 0 ? '#ef4444' : (clearance < 50 ? '#fbbf24' : '#4ade80');
+        ctx.font = 'bold 14px sans-serif';
+        const clrInches = (clearance / 25.4).toFixed(1);
+        ctx.fillText(`${Math.round(clearance)}mm / ${clrInches}"`, hp.x + 10, (hp.y + hb.y) / 2);
+      }
+    }
+
+    // Initial render
+    render();
+  </script>
+</body>
+</html>
