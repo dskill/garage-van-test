@@ -190,6 +190,15 @@
       </div>
 
       <div class="input-group">
+        <label>Safety Margin</label>
+        <div class="input-row">
+          <input type="range" id="safetyMargin" min="0" max="150" step="5">
+          <input type="text" id="safetyMarginNum" class="unit-input" style="width: 80px;">
+        </div>
+        <div class="info">Extra height buffer for suspension, error, etc.</div>
+      </div>
+
+      <div class="input-group">
         <label>Wheelbase</label>
         <div class="input-row">
           <input type="range" id="wheelbase" min="2000" max="4000" step="10">
@@ -302,6 +311,7 @@
     const state = {
       // Van (NV200 defaults)
       vanHeight: 1860,
+      safetyMargin: 50,    // extra buffer for suspension, measurement error
       wheelbase: 2725,
       groundClearance: 160,
       frontOverhang: 850,
@@ -328,8 +338,9 @@
     // Calculate scene bounds for proper centering
     function getSceneBounds() {
       const floorDepth = getFloorDepth();
+      const effectiveHeight = state.vanHeight + state.safetyMargin;
       const minY = -floorDepth - 200;  // Below garage floor
-      const maxY = Math.max(state.vanHeight + 200, -floorDepth + state.garageHeight + 400);
+      const maxY = Math.max(effectiveHeight + 200, -floorDepth + state.garageHeight + 400);
       const minX = -2500;
       const maxX = state.rampLength + 3500;
       return { minX, maxX, minY, maxY };
@@ -422,6 +433,7 @@
 
     // Initialize all inputs
     bindInput('vanHeight', 'vanHeight');
+    bindInput('safetyMargin', 'safetyMargin');
     bindInput('wheelbase', 'wheelbase');
     bindInput('groundClearance', 'groundClearance');
     bindInput('frontOverhang', 'frontOverhang');
@@ -487,7 +499,9 @@
       const vanLength = state.wheelbase + state.frontOverhang + state.rearOverhang;
       const wheelRadius = state.wheelDiameter / 2;
       const bodyBottom = state.groundClearance;
-      const bodyHeight = state.vanHeight - state.groundClearance;
+      // Include safety margin in effective height
+      const effectiveHeight = state.vanHeight + state.safetyMargin;
+      const bodyHeight = effectiveHeight - state.groundClearance;
 
       // Position: 0% = rear axle at x=-2000, 100% = front fully in garage
       const totalTravel = 4000 + state.rampLength + vanLength;
